@@ -1,0 +1,15 @@
+{
+  "name": "stotra-app",
+  "version": "1.0.0",
+  "description": "Telugu / English stotra web app: stotras with per-verse meaning (Ardham), a Sankalpam generated from the user's country and today's panchangam, and a location-based Panchangam tab. Supabase provides login (email + password, no email verification) and stores each user's profile.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "supabase": "^2.122.0"
+  }
+}

@@ -1,0 +1,18 @@
+// Deity images (Wikimedia Commons). Public-domain paintings by Raja Ravi Varma / Ravi Varma Press
+// unless noted; CC BY-SA images are credited in Settings -> Image credits.
+export const GOD_IMAGES = {
+  ganesha: {"src": "img/gods/ganesha.jpg", "title": "Ganapati1", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Ganapati1.jpg"},
+  shiva: {"src": "img/gods/shiva.jpg", "title": "An Oleograph of Shiva, Parvati and Nandi by Raja Ravi Varma", "artist": "Raja Ravi Varma (1848-1906)", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:An_Oleograph_of_Shiva,_Parvati_and_Nandi_by_Raja_Ravi_Varma.jpg"},
+  vishnu: {"src": "img/gods/vishnu.jpg", "title": "Raja Ravi Varma, Seshanarayana (Oleographic print)", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Raja_Ravi_Varma,_Seshanarayana_(Oleographic_print).jpg"},
+  venkateswara: {"src": "img/gods/venkateswara.jpg", "title": "Lord venkateswara statue", "artist": "Adbh266", "license": "CC BY-SA 4.0", "url": "https://commons.wikimedia.org/wiki/File:Lord_venkateswara_statue.jpg"},
+  devi: {"src": "img/gods/devi.jpg", "title": "Durga by Raja Ravi Varma", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Durga_by_Raja_Ravi_Varma.jpg"},
+  lakshmi: {"src": "img/gods/lakshmi.jpg", "title": "Raja Ravi Varma, Goddess Lakshmi, 1896", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Raja_Ravi_Varma,_Goddess_Lakshmi,_1896.jpg"},
+  saraswati: {"src": "img/gods/saraswati.jpg", "title": "Raja Ravi Varma, Goddess Saraswati", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Raja_Ravi_Varma,_Goddess_Saraswati.jpg"},
+  rama: {"src": "img/gods/rama.jpg", "title": "Ramapanchayan, Raja Ravi Varma (Lithograph)", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Ramapanchayan,_Raja_Ravi_Varma_(Lithograph).jpg"},
+  krishna: {"src": "img/gods/krishna.jpg", "title": "Raja Ravi Varma, Yasoda Adorning Krishna", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Raja_Ravi_Varma,_Yasoda_Adorning_Krishna.jpg"},
+  hanuman: {"src": "img/gods/hanuman.jpg", "title": "Hanuman fetches the herb-bearing mountain, in a print from the Ravi Varma Press, 1910's", "artist": "Ravi Varma Press", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Hanuman_fetches_the_herb-bearing_mountain,_in_a_print_from_the_Ravi_Varma_Press,_1910%27s.jpg"},
+  subrahmanya: {"src": "img/gods/subrahmanya.jpg", "title": "Murugan by Raja Ravi Varma", "artist": "Raja Ravi Varma", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Murugan_by_Raja_Ravi_Varma.jpg"},
+  surya: {"src": "img/gods/surya.jpg", "title": "Surya Narayana", "artist": "Ravi Varma Press", "license": "Public domain", "url": "https://commons.wikimedia.org/wiki/File:Surya_Narayana.jpg"},
+  navagraha: {"src": "img/gods/navagraha.jpg", "title": "Nepalese - Mandala of Surya, the Sun God - Walters F195", "artist": "Anonymous (Nepal, 16th c.), Walters Art Museum", "license": "CC0", "url": "https://commons.wikimedia.org/wiki/File:Nepalese_-_Mandala_of_Surya,_the_Sun_God_-_Walters_F195.jpg"},
+  guru: {"src": "img/gods/guru.jpg", "title": "Dakshinamurthy", "artist": "Wayoyo", "license": "CC BY-SA 4.0", "url": "https://commons.wikimedia.org/wiki/File:Dakshinamurthy.jpg"},
+};

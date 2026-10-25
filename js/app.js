@@ -5,6 +5,8 @@ import { CATEGORIES, STOTRAS } from './data/stotras.js';
 import { COUNTRIES, findCountry, cityList, regionOf } from './data/countries.js';
 import { computePanchang, todayIn } from './panchang.js';
 import { buildSankalpam, SANKALPAM_MEANINGS } from './sankalpam.js';
+import { GOTRAS, UNKNOWN_GOTRA, OTHER } from './data/gotras.js';
+import { GOD_IMAGES } from './data/images.js';
 
 const app = document.getElementById('app');
 
@@ -60,6 +62,68 @@ function userLocation() {
 
 function cityLabel(city) {
   return te() ? city.te : city.en;
+}
+
+// Gotra is stored as IAST when picked from the list, or as typed text for "Other"
+function gotraLabel(g) {
+  if (!g) return '';
+  return GOTRAS.includes(g) || g === UNKNOWN_GOTRA ? nm(g) : g;
+}
+
+function gotraField(current) {
+  const custom = current && !GOTRAS.includes(current) && current !== UNKNOWN_GOTRA;
+  const sorted = [...GOTRAS].sort((a, b) => nm(a).localeCompare(nm(b), te() ? 'te' : 'en'));
+  return `
+    <label>${t('gotra')}
+      <select name="gotra_pick">
+        <option value="">—</option>
+        ${sorted.map((g) => `<option value="${g}" ${current === g ? 'selected' : ''}>${esc(nm(g))}</option>`).join('')}
+        <option value="${UNKNOWN_GOTRA}" ${current === UNKNOWN_GOTRA ? 'selected' : ''}>${t('gotraUnknown')}</option>
+        <option value="${OTHER}" ${custom ? 'selected' : ''}>${t('gotraOther')}</option>
+      </select>
+    </label>
+    <label class="gotra-other" ${custom ? '' : 'hidden'}>${t('gotraOtherLabel')}
+      <input name="gotra_other" value="${custom ? esc(current) : ''}">
+    </label>`;
+}
+
+function wireGotra(root) {
+  const pick = root.querySelector('[name=gotra_pick]');
+  const other = root.querySelector('.gotra-other');
+  pick.addEventListener('change', () => {
+    other.hidden = pick.value !== OTHER;
+    if (!other.hidden) other.querySelector('input').focus();
+  });
+}
+
+// FormData -> profile fields, folding the two gotra inputs into one
+function readProfileForm(form) {
+  const f = Object.fromEntries(new FormData(form));
+  f.gotra = f.gotra_pick === OTHER ? String(f.gotra_other || '').trim() : f.gotra_pick;
+  delete f.gotra_pick;
+  delete f.gotra_other;
+  return f;
+}
+
+async function setLanguage(lang) {
+  state.lang = lang;
+  localSet('lang', lang);
+  if (state.user && state.profile) {
+    state.profile = { ...state.profile, language: lang };
+    backend.saveProfile(state.user, state.profile).catch(() => { /* keep local choice */ });
+  }
+}
+
+const panchangCache = new Map();
+function panchangFor(ymd, city) {
+  const key = `${city.lat},${city.lon},${ymd.y}-${ymd.m}-${ymd.d}`;
+  if (!panchangCache.has(key)) panchangCache.set(key, computePanchang(ymd, city));
+  return panchangCache.get(key);
+}
+
+function godImage(catId, cls = '') {
+  const img = GOD_IMAGES[catId];
+  return img ? `<img class="${cls}" src="${img.src}" alt="" loading="lazy">` : '';
 }
 
 // ---------------------------------------------------------------- screens
@@ -160,15 +224,16 @@ function renderCountrySetup() {
         <label>${t('country')}<select name="country">${countryOptions(guessCountry)}</select></label>
         <label>${t('city')}<select name="city">${cityOptions(guessCountry, p.city || cityList(findCountry(guessCountry)).find((c) => c.tz === guess)?.en)}</select></label>
         <label>${t('fullName')}<input name="full_name" value="${esc(p.full_name || state.user?.user_metadata?.full_name || '')}"></label>
-        <label>${t('gotra')}<input name="gotra" value="${esc(p.gotra || '')}"></label>
+        ${gotraField(p.gotra)}
         <button class="primary" type="submit">${t('continue')}</button>
       </form>
     </main>`);
   const form = app.querySelector('#country-form');
   wireCountryCity(form);
+  wireGotra(form);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const f = Object.fromEntries(new FormData(form));
+    const f = readProfileForm(form);
     state.profile = await backend.saveProfile(state.user, { ...state.profile, ...f, language: state.lang, favorites: state.profile?.favorites || [] });
     location.hash = '#/home';
     route();
@@ -189,20 +254,60 @@ function shell(active, title, body, { back } = {}) {
       ${back ? `<a class="icon-btn" href="${back}" aria-label="Back">‹</a>` : '<span class="brand-mini">ॐ</span>'}
       <h1>${title}</h1>
       <span class="spacer"></span>
+      <button class="lang-toggle" id="lang-toggle" aria-label="${te() ? 'Switch to English' : 'తెలుగుకు మార్చండి'}">${te() ? 'English' : 'తెలుగు'}</button>
     </header>
     ${DEMO ? `<p class="notice slim">${t('demoMode')}</p>` : ''}
     <main class="content">${body}</main>
     <nav class="tabbar">
       ${tabs.map(([id, icon, label]) => `<a href="#/${id}" class="${active === id ? 'on' : ''}"><span>${icon}</span>${label}</a>`).join('')}
     </nav>`);
+  app.querySelector('#lang-toggle').addEventListener('click', () => {
+    const y = window.scrollY;
+    setLanguage(te() ? 'en' : 'te');
+    route({ keepScroll: true }).then(() => window.scrollTo(0, y));
+  });
+}
+
+function todayBanner() {
+  const { city } = userLocation();
+  const ymd = todayIn(city.tz);
+  const p = panchangFor(ymd, city);
+  const loc = te() ? 'te-IN' : 'en-GB';
+  const date = new Intl.DateTimeFormat(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(ymd.y, ymd.m, ymd.d)));
+  const tf = new Intl.DateTimeFormat(loc, { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: city.tz });
+  const paksha = p.tithi.paksha === 'śukla' ? (te() ? 'శుక్ల' : 'Shukla') : (te() ? 'కృష్ణ' : 'Krishna');
+  const masa = `${p.masa.adhika ? `${t('adhika')} ` : ''}${nm(p.masa.name)}`;
+  const item = (k, v, sub) => `<div class="tb-item"><small>${t(k)}</small><strong>${v}</strong>${sub ? `<em>${sub}</em>` : ''}</div>`;
+  return `
+    <a class="today-banner" href="#/panchang">
+      <div class="tb-head">
+        <div>
+          <div class="tb-date">${esc(date)}</div>
+          <div class="tb-sub">${nm(p.samvatsara)} ${te() ? 'నామ సంవత్సరం' : 'Samvatsara'} · ${esc(masa)} ${te() ? 'మాసం' : 'Masa'} · ${paksha} ${te() ? 'పక్షం' : 'Paksha'}</div>
+        </div>
+        <span class="tb-loc">📍 ${esc(cityLabel(city))}</span>
+      </div>
+      <div class="tb-grid">
+        ${item('tithi', nm(p.tithi.name), `${t('till')} ${tf.format(p.tithi.end)}`)}
+        ${item('nakshatra', nm(p.nakshatra.name), `${t('till')} ${tf.format(p.nakshatra.end)}`)}
+        ${item('sunrise', tf.format(p.sunrise), `${t('sunset')} ${tf.format(p.sunset)}`)}
+        ${item('rahu', `${tf.format(p.rahu.start)}`, `– ${tf.format(p.rahu.end)}`)}
+      </div>
+      <span class="tb-more">${t('fullPanchangam')} ›</span>
+    </a>`;
 }
 
 function renderHome() {
   const cards = CATEGORIES.map((c) => {
     const n = STOTRAS.filter((s) => s.cat === c.id).length;
-    return `<a class="cat" href="#/cat/${c.id}"><span class="cat-mark">${c.mark}</span><span class="cat-name">${esc(catTitle(c))}</span><span class="cat-count">${n}</span></a>`;
+    const art = GOD_IMAGES[c.id]
+      ? godImage(c.id, 'cat-img')
+      : `<span class="cat-img cat-symbol">${c.mark}</span>`;
+    return `<a class="cat" href="#/cat/${c.id}">${art}<span class="cat-body"><span class="cat-name">${esc(catTitle(c))}</span><span class="cat-count">${n} ${t(n === 1 ? 'stotraOne' : 'stotrasCount')}</span></span></a>`;
   }).join('');
   shell('home', t('appName'), `
+    ${todayBanner()}
     <div class="search"><input id="q" type="search" placeholder="${t('search')}" autocomplete="off"></div>
     <div id="results"></div>
     <div class="grid" id="cats">${cards}</div>`);
@@ -222,14 +327,18 @@ function listHtml(items) {
     const c = CATEGORIES.find((x) => x.id === s.cat);
     const fav = state.profile?.favorites?.includes(s.id);
     const count = s.dynamic ? '' : `${s.verses.length} ${t('verses')}`;
-    return `<li><a href="#/s/${s.id}"><span class="cat-mark sm">${c.mark}</span><span class="li-main"><span class="li-title">${esc(stotraTitle(s))}</span><span class="li-sub">${esc(catTitle(c))}${count ? ` · ${count}` : ''}</span></span>${fav ? '<span class="star on">★</span>' : ''}<span class="chev">›</span></a></li>`;
+    const thumb = GOD_IMAGES[c.id] ? godImage(c.id, 'li-thumb') : `<span class="cat-mark sm">${c.mark}</span>`;
+    return `<li><a href="#/s/${s.id}">${thumb}<span class="li-main"><span class="li-title">${esc(stotraTitle(s))}</span><span class="li-sub">${esc(catTitle(c))}${count ? ` · ${count}` : ''}</span></span>${fav ? '<span class="star on">★</span>' : ''}<span class="chev">›</span></a></li>`;
   }).join('')}</ul>`;
 }
 
 function renderCategory(id) {
   const c = CATEGORIES.find((x) => x.id === id);
   if (!c) return renderHome();
-  shell('home', esc(catTitle(c)), listHtml(STOTRAS.filter((s) => s.cat === id)), { back: '#/home' });
+  const hero = GOD_IMAGES[c.id]
+    ? `<div class="cat-hero">${godImage(c.id)}<div class="cat-hero-title">${esc(catTitle(c))}</div></div>`
+    : '';
+  shell('home', esc(catTitle(c)), hero + listHtml(STOTRAS.filter((s) => s.cat === id)), { back: '#/home' });
 }
 
 function verseHtml(text, meaning, i, label) {
@@ -254,8 +363,8 @@ function renderStotra(id) {
   if (s.dynamic) {
     const { country, city } = userLocation();
     const ymd = todayIn(city.tz);
-    const p = computePanchang(ymd, city);
-    const prof = { ...state.profile, city_label: cityLabel(city) };
+    const p = panchangFor(ymd, city);
+    const prof = { ...state.profile, city_label: cityLabel(city), gotra_label: gotraLabel(state.profile?.gotra) };
     const lines = buildSankalpam(prof, p, script, state.lang);
     versesHtml = lines.map((l, i) => verseHtml(l.text, SANKALPAM_MEANINGS[l.key][state.lang], i, '')).join('');
     const dateStr = new Intl.DateTimeFormat(te() ? 'te-IN' : 'en-GB', { dateStyle: 'full', timeZone: city.tz }).format(p.sunrise);
@@ -272,6 +381,7 @@ function renderStotra(id) {
       <button class="chip" id="font-up" aria-label="Larger text">A+</button>
       <button class="chip star ${fav ? 'on' : ''}" id="fav" aria-label="Favorite">${fav ? '★' : '☆'}</button>
     </div>
+    ${GOD_IMAGES[s.cat] ? `<div class="stotra-hero">${godImage(s.cat)}</div>` : ''}
     <details class="card about" open><summary>${t('about')}</summary><p>${esc(s.about[state.lang])}</p></details>
     ${extra}
     <div class="verses ${te() ? 'te' : 'latin'}">${versesHtml}</div>`, { back: `#/cat/${s.cat}` });
@@ -307,7 +417,7 @@ function renderPanchang() {
   const { country, city } = userLocation();
   if (!state.panchangDate) state.panchangDate = todayIn(city.tz);
   const ymd = state.panchangDate;
-  const p = computePanchang(ymd, city);
+  const p = panchangFor(ymd, city);
   const tf = new Intl.DateTimeFormat(te() ? 'te-IN' : 'en-GB', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: city.tz });
   const df = new Intl.DateTimeFormat(te() ? 'te-IN' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
   const dshort = new Intl.DateTimeFormat(te() ? 'te-IN' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: city.tz });
@@ -392,17 +502,21 @@ function renderSettings(msg = '') {
   const { country } = userLocation();
   const dvipas = ['jambū', 'plakṣa', 'śālmali', 'kuśa', 'krauñca', 'śāka', 'puṣkara'];
   shell('settings', t('settings'), `
+    <section class="card form">
+      <span class="field-label">${t('language')}</span>
+      <div class="segmented" id="lang-seg">
+        <button type="button" data-lang="te" class="${te() ? 'on' : ''}">తెలుగు</button>
+        <button type="button" data-lang="en" class="${!te() ? 'on' : ''}">English</button>
+      </div>
+    </section>
     <form class="card form" id="settings-form">
-      <label>${t('language')}
-        <select name="language"><option value="te" ${te() ? 'selected' : ''}>తెలుగు</option><option value="en" ${!te() ? 'selected' : ''}>English</option></select>
-      </label>
       <label>${t('script')}
         <select name="script"><option value="iast" ${state.script === 'iast' ? 'selected' : ''}>IAST (śuklāmbaradharaṁ)</option><option value="simple" ${state.script === 'simple' ? 'selected' : ''}>Simple (shuklaambaradharam)</option></select>
       </label>
       <label>${t('country')}<select name="country">${countryOptions(country.code)}</select></label>
       <label>${t('city')}<select name="city">${cityOptions(country.code, p.city)}</select></label>
       <label>${t('fullName')}<input name="full_name" value="${esc(p.full_name || '')}"></label>
-      <label>${t('gotra')}<input name="gotra" value="${esc(p.gotra || '')}"></label>
+      ${gotraField(p.gotra)}
       <label>${t('deity')}
         <select name="deity">${DEITIES.map((d) => `<option value="${d}" ${(p.deity || DEITIES[0]) === d ? 'selected' : ''}>${nm(d)}</option>`).join('')}</select>
       </label>
@@ -415,16 +529,25 @@ function renderSettings(msg = '') {
       ${msg ? `<p class="ok">${msg}</p>` : ''}
       <button class="primary" type="submit">${t('save')}</button>
     </form>
+    <details class="card credits">
+      <summary>${t('imageCredits')}</summary>
+      <ul>${Object.entries(GOD_IMAGES).map(([cat, img]) => `<li><strong>${esc(catTitle(CATEGORIES.find((c) => c.id === cat)))}</strong>: <a href="${img.url}" target="_blank" rel="noopener">${esc(img.title)}</a> · ${esc(img.artist)} · ${esc(img.license)}</li>`).join('')}</ul>
+      <p class="muted small">${t('creditsNote')}</p>
+    </details>
     <p class="muted small center">${esc(state.user?.email || '')}</p>
     <button class="danger wide" id="logout">${t('logout')}</button>`);
+  app.querySelectorAll('#lang-seg [data-lang]').forEach((b) => b.addEventListener('click', () => {
+    if (b.dataset.lang === state.lang) return;
+    setLanguage(b.dataset.lang);
+    renderSettings();
+  }));
   const form = app.querySelector('#settings-form');
   wireCountryCity(form);
+  wireGotra(form);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const f = Object.fromEntries(new FormData(form));
-    state.lang = f.language;
+    const f = readProfileForm(form);
     state.script = f.script;
-    localSet('lang', state.lang);
     localSet('script', state.script);
     delete f.script;
     state.profile = await backend.saveProfile(state.user, { ...state.profile, ...f });
@@ -442,7 +565,7 @@ function renderSettings(msg = '') {
 
 // ---------------------------------------------------------------- router
 
-async function route() {
+async function route({ keepScroll = false } = {}) {
   if (!state.lang) return renderLanguage();
   if (!state.user) {
     state.user = await backend.currentUser();
@@ -450,10 +573,11 @@ async function route() {
   }
   if (!state.user) return renderAuth();
   if (!state.profile?.country) return renderCountrySetup();
-  if (state.profile.language && !localGet('lang')) state.lang = state.profile.language;
+  // The language picked on this device wins; keep the profile in sync with it
+  if (state.profile.language !== state.lang) setLanguage(state.lang);
 
   const [, view, arg] = (location.hash || '#/home').split('/');
-  window.scrollTo(0, 0);
+  if (!keepScroll) window.scrollTo(0, 0);
   switch (view) {
     case 'cat': return renderCategory(arg);
     case 's': return renderStotra(arg);
@@ -464,7 +588,7 @@ async function route() {
   }
 }
 
-window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => route());
 route().catch((e) => {
   app.innerHTML = `<p class="error pad">${esc(e.message || e)}</p>`;
 });

@@ -23,7 +23,7 @@ export function buildSankalpam(profile, p, render, lang) {
   const fill = {
     '§1': lang === 'te' ? country.te : country.en,
     '§2': profile.city_label || profile.city || '',
-    '§3': profile.gotra || '……',
+    '§3': profile.gotra_label || profile.gotra || '……',
     '§4': profile.full_name || '……',
   };
 
