@@ -65,9 +65,10 @@ function cityLabel(city) {
 }
 
 // Gotra is stored as IAST when picked from the list, or as typed text for "Other"
-function gotraLabel(g) {
+// In the sankalpam the gotra follows the verse script (Telugu / IAST / simple)
+function sankalpaGotra(g) {
   if (!g) return '';
-  return GOTRAS.includes(g) || g === UNKNOWN_GOTRA ? nm(g) : g;
+  return GOTRAS.includes(g) || g === UNKNOWN_GOTRA ? script(g) : g;
 }
 
 function gotraField(current) {
@@ -306,7 +307,9 @@ function renderHome() {
       : `<span class="cat-img cat-symbol">${c.mark}</span>`;
     return `<a class="cat" href="#/cat/${c.id}">${art}<span class="cat-body"><span class="cat-name">${esc(catTitle(c))}</span><span class="cat-count">${n} ${t(n === 1 ? 'stotraOne' : 'stotrasCount')}</span></span></a>`;
   }).join('');
+  const name = (state.profile?.full_name || state.user?.user_metadata?.full_name || '').trim();
   shell('home', t('appName'), `
+    <h2 class="greeting">🙏 ${t('namaskaram')}${name ? `, <span>${esc(name)}</span>` : ''}</h2>
     ${todayBanner()}
     <div class="search"><input id="q" type="search" placeholder="${t('search')}" autocomplete="off"></div>
     <div id="results"></div>
@@ -364,7 +367,7 @@ function renderStotra(id) {
     const { country, city } = userLocation();
     const ymd = todayIn(city.tz);
     const p = panchangFor(ymd, city);
-    const prof = { ...state.profile, city_label: cityLabel(city), gotra_label: gotraLabel(state.profile?.gotra) };
+    const prof = { ...state.profile, city_label: cityLabel(city), gotra_label: sankalpaGotra(state.profile?.gotra) };
     const lines = buildSankalpam(prof, p, script, state.lang);
     versesHtml = lines.map((l, i) => verseHtml(l.text, SANKALPAM_MEANINGS[l.key][state.lang], i, '')).join('');
     const dateStr = new Intl.DateTimeFormat(te() ? 'te-IN' : 'en-GB', { dateStyle: 'full', timeZone: city.tz }).format(p.sunrise);

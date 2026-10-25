@@ -1,8 +1,9 @@
 // Stotra library. Text is IAST (rendered to Telugu script by translit.js).
 // Each verse carries its meaning (Ardham) in English and Telugu.
-// Add more stotras by appending to STOTRAS; category ids must exist in CATEGORIES.
+// More stotras live in stotras-more.js; category ids must exist in CATEGORIES.
+import { MORE_CATEGORIES, MORE_STOTRAS } from './stotras-more.js';
 
-export const CATEGORIES = [
+const BASE_CATEGORIES = [
   { id: 'nitya', iast: 'nitya pārāyaṇa', en: 'Daily Prayers', mark: 'ॐ' },
   { id: 'pooja', iast: 'pūjā vidhānam', en: 'Pooja Vidhanam', mark: '🪔' },
   { id: 'ganesha', iast: 'gaṇeśa', en: 'Ganesha', mark: 'గ' },
@@ -22,7 +23,7 @@ export const CATEGORIES = [
   { id: 'vedic', iast: 'vaidika mantrāḥ', en: 'Vedic Mantras', mark: 'వే' },
 ];
 
-export const STOTRAS = [
+const BASE_STOTRAS = [
   // ---------------- Daily prayers ----------------
   {
     id: 'karagre', cat: 'nitya', iast: 'prātaḥ smaraṇam (karāgre vasate)', en: 'Morning Prayer (Karagre Vasate)',
@@ -729,3 +730,12 @@ export const STOTRAS = [
     ],
   },
 ];
+
+// Insert extra categories after the one named in `after`
+export const CATEGORIES = MORE_CATEGORIES.reduce((list, { after, ...cat }) => {
+  const i = list.findIndex((c) => c.id === after);
+  return [...list.slice(0, i + 1), cat, ...list.slice(i + 1)];
+}, BASE_CATEGORIES);
+
+// Keep each category's stotras together, base ones first
+export const STOTRAS = CATEGORIES.flatMap((c) => [...BASE_STOTRAS, ...MORE_STOTRAS].filter((x) => x.cat === c.id));
