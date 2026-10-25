@@ -1,5 +1,5 @@
 import { STRINGS } from './i18n.js';
-import { toTelugu, toSimple, toPlainName } from './translit.js';
+import { toTelugu, toSimple, toPlainName, fromTelugu } from './translit.js';
 import { backend, DEMO } from './backend.js';
 import { CATEGORIES, STOTRAS } from './data/stotras.js';
 import { COUNTRIES, findCountry, cityList, regionOf } from './data/countries.js';
@@ -40,7 +40,28 @@ function script(iast) {
 function nm(iast) {
   return te() ? toTelugu(iast) : toPlainName(iast);
 }
-const stotraTitle = (s) => (te() ? toTelugu(s.iast) : s.en);
+// Built-in stotras are stored in IAST; imported ones in Telugu script (te_title / tt)
+const stotraTitle = (s) => (te() ? (s.te_title || toTelugu(s.iast)) : s.en);
+function verseText(v) {
+  if (v.t) return script(v.t);
+  if (te()) return v.tt.replace(/\|\|/g, '॥').replace(/\|/g, '।');
+  const iast = fromTelugu(v.tt);
+  return state.script === 'simple' ? toSimple(iast) : iast;
+}
+const verseCount = (s) => s.verses.filter((v) => !v.h).length;
+const hasMeanings = (s) => s.dynamic || s.verses.some((v) => v.en);
+
+// Lower-cased text searched by the home search box, built once per stotra
+const searchIndex = new Map();
+function searchText(s) {
+  if (!searchIndex.has(s.id)) {
+    const parts = s.iast
+      ? [s.en, s.iast, toSimple(s.iast), toTelugu(s.iast), ...s.verses.map((x) => x.t)]
+      : [s.en, s.te_title, fromTelugu(s.te_title), toSimple(fromTelugu(s.te_title)), ...s.verses.map((x) => x.tt)];
+    searchIndex.set(s.id, parts.join('\n').toLowerCase());
+  }
+  return searchIndex.get(s.id);
+}
 const catTitle = (c) => (te() ? toTelugu(c.iast) : c.en);
 
 function esc(s) {
@@ -319,8 +340,7 @@ function renderHome() {
     const v = q.value.trim().toLowerCase();
     app.querySelector('#cats').hidden = !!v;
     if (!v) { app.querySelector('#results').innerHTML = ''; return; }
-    const hits = STOTRAS.filter((s) => [s.en, s.iast, toSimple(s.iast), toTelugu(s.iast), ...s.verses.map((x) => x.t)]
-      .some((x) => x.toLowerCase().includes(v)));
+    const hits = STOTRAS.filter((s) => searchText(s).includes(v));
     app.querySelector('#results').innerHTML = hits.length ? listHtml(hits) : `<p class="muted center">${t('noResults')}</p>`;
   });
 }
@@ -329,7 +349,7 @@ function listHtml(items) {
   return `<ul class="list">${items.map((s) => {
     const c = CATEGORIES.find((x) => x.id === s.cat);
     const fav = state.profile?.favorites?.includes(s.id);
-    const count = s.dynamic ? '' : `${s.verses.length} ${t('verses')}`;
+    const count = s.dynamic ? '' : `${verseCount(s)} ${t('verses')}`;
     const thumb = GOD_IMAGES[c.id] ? godImage(c.id, 'li-thumb') : `<span class="cat-mark sm">${c.mark}</span>`;
     return `<li><a href="#/s/${s.id}">${thumb}<span class="li-main"><span class="li-title">${esc(stotraTitle(s))}</span><span class="li-sub">${esc(catTitle(c))}${count ? ` · ${count}` : ''}</span></span>${fav ? '<span class="star on">★</span>' : ''}<span class="chev">›</span></a></li>`;
   }).join('')}</ul>`;
@@ -350,10 +370,10 @@ function verseHtml(text, meaning, i, label) {
       <div class="verse-text">${label
         ? `${esc(text.replace(/\s*(\|\||॥)\s*$/, '')).replace(/\n/g, '<br>')} <span class="vnum">${label}</span>`
         : esc(text).replace(/\n/g, '<br>')}</div>
-      <details class="ardham" ${state.showAllMeanings ? 'open' : ''}>
+      ${meaning ? `<details class="ardham" ${state.showAllMeanings ? 'open' : ''}>
         <summary>${t('meaning')}</summary>
         <p>${esc(meaning)}</p>
-      </details>
+      </details>` : ''}
     </article>`;
 }
 
@@ -374,22 +394,31 @@ function renderStotra(id) {
     extra = `<div class="card info"><strong>${t('sankalpamFor')}</strong> · ${esc(dateStr)}<br>
       <span class="muted">${esc(cityLabel(city))}, ${esc(te() ? country.te : country.en)} — ${t('sankalpamNote')}</span><br>
       <a href="#/settings" class="link">${t('editProfile')}</a></div>`;
+  } else if (s.source) {
+    // Imported texts carry their own verse numbers and section headings
+    versesHtml = s.verses.map((v, i) => (v.h
+      ? `<h3 class="verse-h">${esc(verseText(v))}</h3>`
+      : verseHtml(verseText(v), null, i, ''))).join('');
   } else {
-    versesHtml = s.verses.map((v, i) => verseHtml(script(v.t), v[state.lang], i, s.verses.length > 1 ? `॥ ${i + 1} ॥` : '')).join('');
+    versesHtml = s.verses.map((v, i) => verseHtml(verseText(v), v[state.lang], i, s.verses.length > 1 ? `॥ ${i + 1} ॥` : '')).join('');
   }
+  const aboutText = s.about[state.lang] || s.about.te || '';
+  const source = s.source
+    ? `<p class="source">${t('sourceNote')} <a href="${s.source}" target="_blank" rel="noopener">${t('sourceLink')}</a> (CC BY-SA 4.0)</p>`
+    : '';
   shell('home', esc(stotraTitle(s)), `
     <div class="reader-tools">
-      <button class="chip" id="toggle-all">${state.showAllMeanings ? t('hideAllMeanings') : t('showAllMeanings')}</button>
+      ${hasMeanings(s) ? `<button class="chip" id="toggle-all">${state.showAllMeanings ? t('hideAllMeanings') : t('showAllMeanings')}</button>` : ''}
       <button class="chip" id="font-down" aria-label="Smaller text">A−</button>
       <button class="chip" id="font-up" aria-label="Larger text">A+</button>
       <button class="chip star ${fav ? 'on' : ''}" id="fav" aria-label="Favorite">${fav ? '★' : '☆'}</button>
     </div>
     ${GOD_IMAGES[s.cat] ? `<div class="stotra-hero">${godImage(s.cat)}</div>` : ''}
-    <details class="card about" open><summary>${t('about')}</summary><p>${esc(s.about[state.lang])}</p></details>
+    ${aboutText || source ? `<details class="card about" ${s.about[state.lang] || !aboutText ? 'open' : ''}><summary>${t('about')}</summary>${aboutText ? `<p>${esc(aboutText)}</p>` : ''}${source}</details>` : ''}
     ${extra}
     <div class="verses ${te() ? 'te' : 'latin'}">${versesHtml}</div>`, { back: `#/cat/${s.cat}` });
 
-  app.querySelector('#toggle-all').addEventListener('click', () => {
+  app.querySelector('#toggle-all')?.addEventListener('click', () => {
     state.showAllMeanings = !state.showAllMeanings;
     localSet('showAllMeanings', state.showAllMeanings ? '1' : '0');
     renderStotra(id);

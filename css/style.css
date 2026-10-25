@@ -215,6 +215,13 @@ button, input, select { font: inherit; color: inherit; }
 .ardham summary::-webkit-details-marker { display: none; }
 .ardham p { margin: 8px 0 0; font-size: calc(15.5px * var(--text-scale)); line-height: 1.7; color: var(--ink); }
 
+.verse-h {
+  margin: 20px 0 10px; font-size: calc(17px * var(--text-scale)); color: var(--brand); font-weight: 700;
+  border-bottom: 1px solid var(--line); padding-bottom: 6px;
+}
+.source { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.source a { color: var(--brand); text-decoration: underline; }
+
 /* ---------- panchangam ---------- */
 .date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .date-nav .icon-btn { background: var(--surface); border: 1px solid var(--line); color: var(--brand); }

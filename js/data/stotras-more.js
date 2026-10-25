@@ -3,6 +3,7 @@
 export const MORE_CATEGORIES = [
   { id: 'ayyappa', iast: 'ayyappa', en: 'Ayyappa', mark: 'అ', after: 'subrahmanya' },
   { id: 'datta', iast: 'dattātreya', en: 'Dattatreya', mark: 'ద', after: 'ayyappa' },
+  { id: 'vividha', iast: 'vividha stotrāṇi', en: 'Other Stotras', mark: '✦', after: 'vedic' },
 ];
 
 const v = (t, en, te) => ({ t, en, te });
