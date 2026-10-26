@@ -148,8 +148,38 @@ button, input, select { font: inherit; color: inherit; }
   border: 3px solid var(--gold); box-shadow: var(--shadow);
 }
 
-.greeting { margin: 2px 0 12px; font-size: 22px; font-weight: 700; color: var(--ink); }
+/* ganesha banner */
+.ganesha-banner {
+  display: flex; align-items: center; gap: 14px; padding: 12px; margin-bottom: 12px; border-radius: 16px;
+  background: linear-gradient(135deg, var(--gold-soft), var(--surface)); border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.gb-img { width: 84px; height: 104px; flex: none; object-fit: cover; object-position: top; border-radius: 12px; border: 2px solid var(--gold); }
+.gb-text { min-width: 0; }
+.greeting { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); line-height: 1.3; }
 .greeting span { color: var(--brand); }
+.gb-shloka { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); font-family: var(--font-te); }
+html[lang="en"] .gb-shloka { font-family: var(--font-latin); font-style: italic; }
+
+/* category sections */
+.acc-wrap { display: flex; flex-direction: column; gap: 10px; }
+.acc { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.acc summary { display: flex; align-items: center; gap: 12px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.acc summary::-webkit-details-marker { display: none; }
+.acc-img { width: 52px; height: 52px; flex: none; border-radius: 12px; object-fit: cover; object-position: top; background: var(--surface-2); }
+.acc-symbol {
+  display: grid; place-items: center; font-size: 26px; color: #f6c453;
+  background: radial-gradient(circle at 50% 35%, #b8322a, #5e0f0f); font-family: 'Noto Sans Telugu', sans-serif;
+}
+.acc-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.acc-name { font-weight: 700; font-size: 16px; }
+.acc-count { font-size: 12.5px; color: var(--muted); }
+.acc-chev { color: var(--muted); font-size: 24px; transition: transform .15s; }
+.acc[open] .acc-chev { transform: rotate(90deg); }
+.acc[open] summary { border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.acc-list { list-style: none; margin: 0; padding: 4px 0; }
+.acc-list li a { display: block; padding: 9px 16px 9px 76px; font-size: 15px; }
+.acc-list li + li a { border-top: 1px solid var(--line); }
+.acc-list li a:hover { background: var(--surface-2); color: var(--brand); }
 
 /* today banner */
 .today-banner {
@@ -218,6 +248,10 @@ button, input, select { font: inherit; color: inherit; }
 .verse-h {
   margin: 20px 0 10px; font-size: calc(17px * var(--text-scale)); color: var(--brand); font-weight: 700;
   border-bottom: 1px solid var(--line); padding-bottom: 6px;
+}
+.step-note {
+  margin: -2px 0 12px; padding: 8px 12px; border-radius: 10px; font-size: 14px;
+  background: var(--gold-soft); color: var(--ink); border-left: 3px solid var(--gold);
 }
 .source { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 .source a { color: var(--brand); text-decoration: underline; }

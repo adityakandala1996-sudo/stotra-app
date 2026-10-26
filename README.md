@@ -21,19 +21,21 @@ When `js/config.js` is empty, the app runs in **demo mode**: accounts are kept i
 3. **Authentication → Sign In / Providers → Email** → turn **off** "Confirm email". Users can then sign up and log in immediately, with no verification mail.
 4. **Project Settings → API** → copy the Project URL and the `anon` public key into `js/config.js`.
 
-## Hosting
-
-Supabase can't serve this page as a website: Storage and Edge Functions return HTML as `text/plain`. Keep Supabase as the backend and host the static files on any free static host:
-
-- **Netlify:** drag the `stotra-app` folder onto https://app.netlify.com/drop
-- **Vercel:** `npx vercel deploy --prod` from this folder
-- **GitHub Pages / Cloudflare Pages:** push the folder and enable Pages
-
-Then add the site URL under Supabase **Authentication → URL Configuration → Site URL**.
-
 ## Content
 
-- `js/data/stotras.js`: categories and stotras. Text is written once in IAST and rendered as Telugu script (`js/translit.js`) or as IAST / simple English. Each verse has `en` and `te` meanings. To add a stotra, append an object with `id`, `cat`, `iast`, `en`, `about`, `verses`.
-- `js/data/countries.js`: countries, cities (lat/lon/time zone) and the sankalpam dvipa for each region. Outside India the dvipa varies by tradition; users can override it in Settings.
+- `js/data/stotras.js`: categories plus the built-in stotras, which are written in IAST with per-verse meanings in `en` and `te`. More built-in stotras live in `stotras-more.js`, and the pooja/karma procedures (Poorvangam, Sandhyavandanam, Yajnopavita Dharana, Satyanarayana Vratam) in `stotras-karma.js`. Verses can be step headings (`h`) or instruction notes (`note: {en, te}`).
+- `js/data/library.js`: generated, so don't edit it by hand. These are stotras imported from Telugu and Sanskrit Wikisource (CC BY-SA 4.0) in Telugu script, without meanings. To regenerate:
+  ```bash
+  python3 -I tools/fetch_sa_wikisource.py      # Sanskrit Wikisource -> tools/.cache (slow, resumable)
+  python3 -I tools/import_wikisource.py        # add --refresh to re-download Telugu Wikisource
+  ```
+  The importer cleans the wiki markup, converts Devanagari to Telugu, groups lines into verses, assigns a section by keyword, and skips anything already in the app.
+- `js/translit.js`: IAST ↔ Telugu, Telugu → IAST for English mode, and English-spelled names → Telugu.
+- `js/data/countries.js`: countries, cities (lat/lon/time zone) and the sankalpam dvipa for each region. Users can override the dvipa in Settings.
 - `js/panchang.js`: tithi, nakshatra, yoga, karana, masa (amanta), samvatsara, ayana, ritu, sunrise/sunset, Rahu kalam, Yamagandam, Gulika and Abhijit. Calculated at local sunrise with the Lahiri ayanamsa, using astronomy-engine.
 - `js/sankalpam.js`: the sankalpam template with its meanings.
+- `supabase/migrations/`: the database schema (`npx supabase db push`).
+
+## Deploying
+
+The site is served by GitHub Pages from `main` at https://adityakandala1996-sudo.github.io/stotra-app/. Pushing to GitHub publishes it within a couple of minutes.

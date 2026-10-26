@@ -120,3 +120,67 @@ export function toPlainName(iast) {
   s = s.replace(/c(h?)/g, (_, h) => (h ? 'chh' : 'ch'));
   return s.replace(/(^|[\s-])([a-z])/g, (_, p, ch) => p + ch.toUpperCase());
 }
+
+// ---- English-spelled Indian names -> Telugu (best guess; users can correct it in Settings)
+const NAME_EXCEPTIONS = {
+  aditya: 'ఆదిత్య', aaditya: 'ఆదిత్య', krishna: 'కృష్ణ', lakshmi: 'లక్ష్మి', laxmi: 'లక్ష్మి', sri: 'శ్రీ', shri: 'శ్రీ',
+  srinivas: 'శ్రీనివాస్', srinivasa: 'శ్రీనివాస', venkat: 'వెంకట్', venkata: 'వెంకట', venkatesh: 'వెంకటేష్',
+  rama: 'రామ', ram: 'రామ్', sai: 'సాయి', satya: 'సత్య', surya: 'సూర్య', anand: 'ఆనంద్', ananth: 'అనంత్',
+  arjun: 'అర్జున్', bharat: 'భరత్', durga: 'దుర్గ', ganesh: 'గణేష్', gowri: 'గౌరి', gauri: 'గౌరి', hari: 'హరి',
+  kiran: 'కిరణ్', kumar: 'కుమార్', mahesh: 'మహేష్', naveen: 'నవీన్', prasad: 'ప్రసాద్', priya: 'ప్రియ',
+  rajesh: 'రాజేష్', raju: 'రాజు', ramesh: 'రమేష్', ravi: 'రవి', sarada: 'శారద', sita: 'సీత', suresh: 'సురేష్',
+  vijay: 'విజయ్', vamsi: 'వంశీ', varma: 'వర్మ', reddy: 'రెడ్డి', rao: 'రావు', naidu: 'నాయుడు', sharma: 'శర్మ',
+};
+const N_CONS = [
+  ['ksh', 'క్ష'], ['chh', 'ఛ'], ['sh', 'ష'], ['ch', 'చ'], ['th', 'త'], ['dh', 'ధ'], ['bh', 'భ'], ['gh', 'ఘ'],
+  ['kh', 'ఖ'], ['ph', 'ఫ'], ['jh', 'ఝ'], ['k', 'క'], ['g', 'గ'], ['c', 'క'], ['j', 'జ'], ['t', 'త'], ['d', 'ద'],
+  ['n', 'న'], ['p', 'ప'], ['b', 'బ'], ['m', 'మ'], ['y', 'య'], ['r', 'ర'], ['l', 'ల'], ['v', 'వ'], ['w', 'వ'],
+  ['s', 'స'], ['h', 'హ'], ['f', 'ఫ'], ['z', 'జ'], ['q', 'క'], ['x', 'క్స'],
+];
+const N_VOW = [
+  ['aa', 'ఆ', 'ా'], ['ee', 'ఈ', 'ీ'], ['ii', 'ఈ', 'ీ'], ['oo', 'ఊ', 'ూ'], ['uu', 'ఊ', 'ూ'], ['ai', 'ఐ', 'ై'],
+  ['au', 'ఔ', 'ౌ'], ['ou', 'ఔ', 'ౌ'], ['ow', 'ఔ', 'ౌ'], ['a', 'అ', ''], ['i', 'ఇ', 'ి'], ['u', 'ఉ', 'ు'], ['e', 'ఎ', 'ె'], ['o', 'ఒ', 'ొ'],
+];
+
+function wordToTelugu(word) {
+  const w = word.toLowerCase();
+  if (NAME_EXCEPTIONS[w]) return NAME_EXCEPTIONS[w];
+  let out = '';
+  let i = 0;
+  let bare = false; // last output is a consonant without a vowel yet
+  while (i < w.length) {
+    const c = N_CONS.find(([k]) => w.startsWith(k, i));
+    if (c) {
+      const after = w.slice(i + c[0].length);
+      // n/m before another consonant is written as anusvara (Anand -> ఆనంద్)
+      if ((c[0] === 'n' || c[0] === 'm') && after && N_CONS.some(([k]) => after.startsWith(k)) && !/^[yrvhnm]/.test(after)) {
+        out += 'ం';
+        bare = false;
+      } else {
+        if (bare) out += '్';
+        // word-initial "sh" is usually శ (Shiva, Shankar)
+        out += c[0] === 'sh' && i === 0 ? 'శ' : c[1];
+        bare = true;
+      }
+      i += c[0].length;
+      continue;
+    }
+    const v = N_VOW.find(([k]) => w.startsWith(k, i));
+    if (v) {
+      out += bare ? v[2] : v[1];
+      bare = false;
+      i += v[0].length;
+      continue;
+    }
+    if (bare) { out += '్'; bare = false; }
+    out += w[i];
+    i += 1;
+  }
+  if (bare) out += '్';
+  return out;
+}
+
+export function nameToTelugu(name) {
+  if (!name || /[ఀ-౿]/.test(name)) return name || '';
+  return name.trim().split(/(\s+)/).map((part) => (/\s/.test(part) ? part : wordToTelugu(part))).join('');
+}

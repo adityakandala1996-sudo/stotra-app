@@ -2,6 +2,7 @@
 // Each verse carries its meaning (Ardham) in English and Telugu.
 // More stotras live in stotras-more.js; category ids must exist in CATEGORIES.
 import { MORE_CATEGORIES, MORE_STOTRAS } from './stotras-more.js';
+import { KARMA_CATEGORIES, KARMA_STOTRAS } from './stotras-karma.js';
 import { LIBRARY } from './library.js';
 import { fromTelugu, toPlainName } from '../translit.js';
 
@@ -746,10 +747,10 @@ const IMPORTED = LIBRARY.map((x) => ({
 }));
 
 // Insert extra categories after the one named in `after`
-export const CATEGORIES = MORE_CATEGORIES.reduce((list, { after, ...cat }) => {
+export const CATEGORIES = [...MORE_CATEGORIES, ...KARMA_CATEGORIES].reduce((list, { after, ...cat }) => {
   const i = list.findIndex((c) => c.id === after);
   return [...list.slice(0, i + 1), cat, ...list.slice(i + 1)];
 }, BASE_CATEGORIES);
 
 // Keep each category's stotras together: ones with meanings first, then imported texts
-export const STOTRAS = CATEGORIES.flatMap((c) => [...BASE_STOTRAS, ...MORE_STOTRAS, ...IMPORTED].filter((x) => x.cat === c.id));
+export const STOTRAS = CATEGORIES.flatMap((c) => [...BASE_STOTRAS, ...KARMA_STOTRAS, ...MORE_STOTRAS, ...IMPORTED].filter((x) => x.cat === c.id));

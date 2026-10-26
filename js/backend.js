@@ -3,7 +3,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
 export const DEMO = !SUPABASE_URL || !SUPABASE_ANON_KEY;
 
-const PROFILE_FIELDS = ['full_name', 'language', 'country', 'city', 'gotra', 'deity', 'dvipa_override', 'favorites'];
+const PROFILE_FIELDS = ['full_name', 'full_name_te', 'language', 'country', 'city', 'gotra', 'deity', 'dvipa_override', 'favorites'];
 
 function pick(obj) {
   return Object.fromEntries(PROFILE_FIELDS.filter((k) => k in obj).map((k) => [k, obj[k]]));

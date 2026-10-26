@@ -1,5 +1,5 @@
 import { STRINGS } from './i18n.js';
-import { toTelugu, toSimple, toPlainName, fromTelugu } from './translit.js';
+import { toTelugu, toSimple, toPlainName, fromTelugu, nameToTelugu } from './translit.js';
 import { backend, DEMO } from './backend.js';
 import { CATEGORIES, STOTRAS } from './data/stotras.js';
 import { COUNTRIES, findCountry, cityList, regionOf } from './data/countries.js';
@@ -48,16 +48,26 @@ function verseText(v) {
   const iast = fromTelugu(v.tt);
   return state.script === 'simple' ? toSimple(iast) : iast;
 }
-const verseCount = (s) => s.verses.filter((v) => !v.h).length;
+// Greeting / sankalpam name: Telugu script in Telugu mode, Roman letters in English mode
+function displayName() {
+  const p = state.profile || {};
+  const en = (p.full_name || state.user?.user_metadata?.full_name || '').trim();
+  if (te()) return (p.full_name_te || '').trim() || nameToTelugu(en);
+  return /[\u0C00-\u0C7F]/.test(en) ? toPlainName(fromTelugu(en)) : en;
+}
+
+const verseCount = (s) => s.verses.filter((v) => !v.h && !v.note).length;
 const hasMeanings = (s) => s.dynamic || s.verses.some((v) => v.en);
 
 // Lower-cased text searched by the home search box, built once per stotra
 const searchIndex = new Map();
 function searchText(s) {
   if (!searchIndex.has(s.id)) {
-    const parts = s.iast
-      ? [s.en, s.iast, toSimple(s.iast), toTelugu(s.iast), ...s.verses.map((x) => x.t)]
-      : [s.en, s.te_title, fromTelugu(s.te_title), toSimple(fromTelugu(s.te_title)), ...s.verses.map((x) => x.tt)];
+    const titles = s.iast
+      ? [s.en, s.iast, toSimple(s.iast), toTelugu(s.iast)]
+      : [s.en, s.te_title, fromTelugu(s.te_title), toSimple(fromTelugu(s.te_title))];
+    // Titles also without spaces, so "mantrapushpam" finds "mantra pushpamu"
+    const parts = [...titles, ...titles.map((x) => (x || '').replace(/\s+/g, '')), ...s.verses.map((x) => x.t || x.tt)];
     searchIndex.set(s.id, parts.join('\n').toLowerCase());
   }
   return searchIndex.get(s.id);
@@ -109,6 +119,22 @@ function gotraField(current) {
     </label>`;
 }
 
+// English name + Telugu name; the Telugu one follows the English until the user edits it
+function nameFields(en, teName) {
+  return `
+    <label>${t('fullName')}<input name="full_name" value="${esc(en)}" autocomplete="name"></label>
+    <label>${t('fullNameTe')}<input name="full_name_te" value="${esc(teName || nameToTelugu(en))}" lang="te">
+      <small class="muted">${t('fullNameTeHelp')}</small></label>`;
+}
+
+function wireNames(root) {
+  const en = root.querySelector('[name=full_name]');
+  const tel = root.querySelector('[name=full_name_te]');
+  let edited = tel.value !== nameToTelugu(en.value);
+  tel.addEventListener('input', () => { edited = true; });
+  en.addEventListener('input', () => { if (!edited) tel.value = nameToTelugu(en.value); });
+}
+
 function wireGotra(root) {
   const pick = root.querySelector('[name=gotra_pick]');
   const other = root.querySelector('.gotra-other');
@@ -136,6 +162,7 @@ async function setLanguage(lang) {
   }
 }
 
+const openSections = new Set();
 const panchangCache = new Map();
 function panchangFor(ymd, city) {
   const key = `${city.lat},${city.lon},${ymd.y}-${ymd.m}-${ymd.d}`;
@@ -245,7 +272,7 @@ function renderCountrySetup() {
       <form class="card form" id="country-form">
         <label>${t('country')}<select name="country">${countryOptions(guessCountry)}</select></label>
         <label>${t('city')}<select name="city">${cityOptions(guessCountry, p.city || cityList(findCountry(guessCountry)).find((c) => c.tz === guess)?.en)}</select></label>
-        <label>${t('fullName')}<input name="full_name" value="${esc(p.full_name || state.user?.user_metadata?.full_name || '')}"></label>
+        ${nameFields(p.full_name || state.user?.user_metadata?.full_name || '', p.full_name_te)}
         ${gotraField(p.gotra)}
         <button class="primary" type="submit">${t('continue')}</button>
       </form>
@@ -253,6 +280,7 @@ function renderCountrySetup() {
   const form = app.querySelector('#country-form');
   wireCountryCity(form);
   wireGotra(form);
+  wireNames(form);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = readProfileForm(form);
@@ -320,21 +348,39 @@ function todayBanner() {
     </a>`;
 }
 
+const BANNER_SHLOKA = 'vakratuṇḍa mahākāya sūryakoṭi samaprabha |\nnirvighnaṁ kuru me deva sarvakāryeṣu sarvadā ||';
+
 function renderHome() {
-  const cards = CATEGORIES.map((c) => {
-    const n = STOTRAS.filter((s) => s.cat === c.id).length;
-    const art = GOD_IMAGES[c.id]
-      ? godImage(c.id, 'cat-img')
-      : `<span class="cat-img cat-symbol">${c.mark}</span>`;
-    return `<a class="cat" href="#/cat/${c.id}">${art}<span class="cat-body"><span class="cat-name">${esc(catTitle(c))}</span><span class="cat-count">${n} ${t(n === 1 ? 'stotraOne' : 'stotrasCount')}</span></span></a>`;
+  // Each section expands in place to list everything it contains
+  const sections = CATEGORIES.map((c) => {
+    const items = STOTRAS.filter((s) => s.cat === c.id);
+    const art = GOD_IMAGES[c.id] ? godImage(c.id, 'acc-img') : `<span class="acc-img acc-symbol">${c.mark}</span>`;
+    return `
+      <details class="acc" data-cat="${c.id}">
+        <summary>${art}<span class="acc-main"><span class="acc-name">${esc(catTitle(c))}</span>
+          <span class="acc-count">${items.length} ${t(items.length === 1 ? 'stotraOne' : 'stotrasCount')}</span></span>
+          <span class="acc-chev">›</span></summary>
+        <ul class="acc-list">${items.map((s) => `<li><a href="#/s/${s.id}">${esc(stotraTitle(s))}${state.profile?.favorites?.includes(s.id) ? ' <span class="star on">★</span>' : ''}</a></li>`).join('')}</ul>
+      </details>`;
   }).join('');
-  const name = (state.profile?.full_name || state.user?.user_metadata?.full_name || '').trim();
+  const name = displayName();
   shell('home', t('appName'), `
-    <h2 class="greeting">🙏 ${t('namaskaram')}${name ? `, <span>${esc(name)}</span>` : ''}</h2>
+    <section class="ganesha-banner">
+      ${godImage('ganesha', 'gb-img')}
+      <div class="gb-text">
+        <h2 class="greeting">🙏 ${t('namaskaram')}${name ? `, <span>${esc(name)}</span>` : ''}</h2>
+        <p class="gb-shloka">${esc(script(BANNER_SHLOKA)).replace(/\n/g, '<br>')}</p>
+      </div>
+    </section>
     ${todayBanner()}
     <div class="search"><input id="q" type="search" placeholder="${t('search')}" autocomplete="off"></div>
     <div id="results"></div>
-    <div class="grid" id="cats">${cards}</div>`);
+    <div id="cats" class="acc-wrap">${sections}</div>`);
+  // Remember which sections were open while moving around the app
+  app.querySelectorAll('.acc').forEach((d) => {
+    if (openSections.has(d.dataset.cat)) d.open = true;
+    d.addEventListener('toggle', () => (d.open ? openSections.add(d.dataset.cat) : openSections.delete(d.dataset.cat)));
+  });
   const q = app.querySelector('#q');
   q.addEventListener('input', () => {
     const v = q.value.trim().toLowerCase();
@@ -387,20 +433,21 @@ function renderStotra(id) {
     const { country, city } = userLocation();
     const ymd = todayIn(city.tz);
     const p = panchangFor(ymd, city);
-    const prof = { ...state.profile, city_label: cityLabel(city), gotra_label: sankalpaGotra(state.profile?.gotra) };
+    const prof = { ...state.profile, full_name: displayName(), city_label: cityLabel(city), gotra_label: sankalpaGotra(state.profile?.gotra) };
     const lines = buildSankalpam(prof, p, script, state.lang);
     versesHtml = lines.map((l, i) => verseHtml(l.text, SANKALPAM_MEANINGS[l.key][state.lang], i, '')).join('');
     const dateStr = new Intl.DateTimeFormat(te() ? 'te-IN' : 'en-GB', { dateStyle: 'full', timeZone: city.tz }).format(p.sunrise);
     extra = `<div class="card info"><strong>${t('sankalpamFor')}</strong> · ${esc(dateStr)}<br>
       <span class="muted">${esc(cityLabel(city))}, ${esc(te() ? country.te : country.en)} — ${t('sankalpamNote')}</span><br>
       <a href="#/settings" class="link">${t('editProfile')}</a></div>`;
-  } else if (s.source) {
-    // Imported texts carry their own verse numbers and section headings
-    versesHtml = s.verses.map((v, i) => (v.h
-      ? `<h3 class="verse-h">${esc(verseText(v))}</h3>`
-      : verseHtml(verseText(v), null, i, ''))).join('');
   } else {
-    versesHtml = s.verses.map((v, i) => verseHtml(verseText(v), v[state.lang], i, s.verses.length > 1 ? `॥ ${i + 1} ॥` : '')).join('');
+    // Imported texts and procedures carry their own numbering; step headings and notes are not verses
+    const numbered = !s.source && !s.nonum && s.verses.length > 1;
+    versesHtml = s.verses.map((v, i) => {
+      if (v.h) return `<h3 class="verse-h">${esc(verseText(v))}</h3>`;
+      if (v.note) return `<p class="step-note">${esc(v.note[state.lang])}</p>`;
+      return verseHtml(verseText(v), v[state.lang], i, numbered ? `॥ ${i + 1} ॥` : '');
+    }).join('');
   }
   const aboutText = s.about[state.lang] || s.about.te || '';
   const source = s.source
@@ -547,7 +594,7 @@ function renderSettings(msg = '') {
       </label>
       <label>${t('country')}<select name="country">${countryOptions(country.code)}</select></label>
       <label>${t('city')}<select name="city">${cityOptions(country.code, p.city)}</select></label>
-      <label>${t('fullName')}<input name="full_name" value="${esc(p.full_name || '')}"></label>
+      ${nameFields(p.full_name || '', p.full_name_te)}
       ${gotraField(p.gotra)}
       <label>${t('deity')}
         <select name="deity">${DEITIES.map((d) => `<option value="${d}" ${(p.deity || DEITIES[0]) === d ? 'selected' : ''}>${nm(d)}</option>`).join('')}</select>
@@ -576,6 +623,7 @@ function renderSettings(msg = '') {
   const form = app.querySelector('#settings-form');
   wireCountryCity(form);
   wireGotra(form);
+  wireNames(form);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = readProfileForm(form);
