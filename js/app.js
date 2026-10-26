@@ -385,18 +385,36 @@ function renderHome() {
   const q = app.querySelector('#q');
   q.addEventListener('input', () => {
     const v = q.value.trim().toLowerCase();
-    app.querySelector('#cats').hidden = !!v;
-    if (!v) { app.querySelector('#results').innerHTML = ''; return; }
-    const hits = STOTRAS.filter((s) => searchText(s).includes(v));
-    app.querySelector('#results').innerHTML = hits.length ? listHtml(hits) : `<p class="muted center">${t('noResults')}</p>`;
+    const results = app.querySelector('#results');
+    const hits = v ? STOTRAS.filter((s) => searchText(s).includes(v)) : [];
+    // sections stay visible when there is nothing to show instead of them
+    app.querySelector('#cats').hidden = hits.length > 0;
+    if (!v) { results.innerHTML = ''; return; }
+    results.innerHTML = hits.length
+      ? `<p class="result-count">${hits.length} ${t('resultsFound')}</p>${listHtml(hits)}`
+      : emptyState('🔍', `“${esc(q.value.trim())}” — ${t('noResults')}`, t('noResultsHelp'), `<button class="chip" id="clear-q">${t('clearSearch')}</button>`);
+    results.querySelector('#clear-q')?.addEventListener('click', () => {
+      q.value = '';
+      q.dispatchEvent(new Event('input'));
+      q.focus();
+    });
   });
+}
+
+function emptyState(icon, title, text, action = '') {
+  return `<div class="empty card"><div class="empty-icon">${icon}</div><h2>${title}</h2><p class="muted">${text}</p>${action}</div>`;
+}
+
+function renderNotFound() {
+  shell('home', t('appName'), emptyState('🙏', t('notFoundTitle'), t('notFound'), `<a class="chip" href="#/home">${t('browseStotras')}</a>`));
 }
 
 function listHtml(items) {
   return `<ul class="list">${items.map((s) => {
     const c = CATEGORIES.find((x) => x.id === s.cat);
     const fav = state.profile?.favorites?.includes(s.id);
-    const count = s.dynamic ? '' : `${verseCount(s)} ${t('verses')}`;
+    const nv = verseCount(s);
+    const count = s.dynamic || !nv ? '' : `${nv} ${t(nv === 1 ? 'verseOne' : 'verses')}`;
     const thumb = GOD_IMAGES[c.id] ? godImage(c.id, 'li-thumb') : `<span class="cat-mark sm">${c.mark}</span>`;
     return `<li><a href="#/s/${s.id}">${thumb}<span class="li-main"><span class="li-title">${esc(stotraTitle(s))}</span><span class="li-sub">${esc(catTitle(c))}${count ? ` · ${count}` : ''}</span></span>${fav ? '<span class="star on">★</span>' : ''}<span class="chev">›</span></a></li>`;
   }).join('')}</ul>`;
@@ -404,7 +422,7 @@ function listHtml(items) {
 
 function renderCategory(id) {
   const c = CATEGORIES.find((x) => x.id === id);
-  if (!c) return renderHome();
+  if (!c) return renderNotFound();
   const hero = GOD_IMAGES[c.id]
     ? `<div class="cat-hero">${godImage(c.id)}<div class="cat-hero-title">${esc(catTitle(c))}</div></div>`
     : '';
@@ -426,7 +444,7 @@ function verseHtml(text, meaning, i, label) {
 
 function renderStotra(id) {
   const s = STOTRAS.find((x) => x.id === id);
-  if (!s) return renderHome();
+  if (!s) return renderNotFound();
   const fav = state.profile?.favorites?.includes(id);
   let versesHtml;
   let extra = '';
@@ -488,7 +506,9 @@ function renderStotra(id) {
 
 function renderFavorites() {
   const favs = (state.profile?.favorites || []).map((id) => STOTRAS.find((s) => s.id === id)).filter(Boolean);
-  shell('fav', t('favorites'), favs.length ? listHtml(favs) : `<p class="muted center pad">${t('noFavorites')}</p>`);
+  shell('fav', t('favorites'), favs.length
+    ? listHtml(favs)
+    : emptyState('☆', t('noFavoritesTitle'), t('noFavorites'), `<a class="chip" href="#/home">${t('browseStotras')}</a>`));
 }
 
 // ---------------------------------------------------------------- panchangam

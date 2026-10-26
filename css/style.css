@@ -107,6 +107,9 @@ button, input, select { font: inherit; color: inherit; }
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr);
   background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom);
 }
+@media (min-width: 800px) {
+  .tabbar { padding-left: calc((100% - 760px) / 2); padding-right: calc((100% - 760px) / 2); }
+}
 .tabbar a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; font-size: 12px; color: var(--muted); font-weight: 600; }
 .tabbar a span { font-size: 20px; line-height: 1.1; }
 .tabbar a.on { color: var(--brand); }
@@ -255,6 +258,15 @@ html[lang="en"] .gb-shloka { font-family: var(--font-latin); font-style: italic;
 }
 .source { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 .source a { color: var(--brand); text-decoration: underline; }
+
+/* empty states */
+.empty { text-align: center; padding: 28px 20px; margin-top: 4px; }
+.empty-icon { font-size: 40px; line-height: 1; margin-bottom: 10px; }
+.empty h2 { font-size: 17px; margin: 0 0 6px; word-break: break-word; }
+.empty p { margin: 0 0 14px; font-size: 14px; }
+.empty .chip { display: inline-block; color: var(--brand); }
+.result-count { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+#results:not(:empty) { margin-bottom: 14px; }
 
 /* ---------- panchangam ---------- */
 .date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
