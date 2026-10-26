@@ -3,6 +3,7 @@
 // More stotras live in stotras-more.js; category ids must exist in CATEGORIES.
 import { MORE_CATEGORIES, MORE_STOTRAS } from './stotras-more.js';
 import { KARMA_CATEGORIES, KARMA_STOTRAS } from './stotras-karma.js';
+import { VINAYAKA_STOTRAS } from './stotras-vinayaka.js';
 import { LIBRARY } from './library.js';
 import { fromTelugu, toPlainName } from '../translit.js';
 
@@ -753,4 +754,4 @@ export const CATEGORIES = [...MORE_CATEGORIES, ...KARMA_CATEGORIES].reduce((list
 }, BASE_CATEGORIES);
 
 // Keep each category's stotras together: ones with meanings first, then imported texts
-export const STOTRAS = CATEGORIES.flatMap((c) => [...BASE_STOTRAS, ...KARMA_STOTRAS, ...MORE_STOTRAS, ...IMPORTED].filter((x) => x.cat === c.id));
+export const STOTRAS = CATEGORIES.flatMap((c) => [...BASE_STOTRAS, ...KARMA_STOTRAS, ...VINAYAKA_STOTRAS, ...MORE_STOTRAS, ...IMPORTED].filter((x) => x.cat === c.id));

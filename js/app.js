@@ -67,7 +67,8 @@ function searchText(s) {
       ? [s.en, s.iast, toSimple(s.iast), toTelugu(s.iast)]
       : [s.en, s.te_title, fromTelugu(s.te_title), toSimple(fromTelugu(s.te_title))];
     // Titles also without spaces, so "mantrapushpam" finds "mantra pushpamu"
-    const parts = [...titles, ...titles.map((x) => (x || '').replace(/\s+/g, '')), ...s.verses.map((x) => x.t || x.tt)];
+    const parts = [...titles, ...titles.map((x) => (x || '').replace(/\s+/g, '')), ...s.verses.map((x) => x.t || x.tt),
+      ...s.verses.filter((x) => x.note).map((x) => `${x.note.en} ${x.note.te}`)];
     searchIndex.set(s.id, parts.join('\n').toLowerCase());
   }
   return searchIndex.get(s.id);
